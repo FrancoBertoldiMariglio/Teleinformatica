@@ -1,44 +1,58 @@
+#!/usr/bin/env python
 from mininet.net import Mininet
-from mininet.node import Node
-from mininet.log import setLogLevel, info
+from mininet.node import Node, OVSKernelSwitch, Host
 from mininet.cli import CLI
+from mininet.log import setLogLevel, info
 
 
-def myNetwork():
-    net = Mininet()
+def my_network():
+    net = Mininet(topo=None, build=False, ipBase="192.168.100.0/24")
 
-    info('*** Adding controller\n')
-    net.addController(name='c0')
+    info("*** Add switches\n")
+    switches = [net.addSwitch(f"s{i}", cls=OVSKernelSwitch, failMode="standalone") for i in range(1, 7)]
+    switches += [net.addSwitch(f"s{i}{i}", cls=OVSKernelSwitch, failMode="standalone") for i in range(1, 7)]
 
-    info('*** Adding hosts\n')
-    h1 = net.addHost('h1', ip='10.0.1.2/24', defaultRoute='via 10.0.1.1')
-    h2 = net.addHost('h2', ip='10.0.2.2/24', defaultRoute='via 10.0.2.1')
+    info("*** Add routers\n")
+    routers = [net.addHost(f"r{i}", cls=Node, ip=f"192.168.100.{1+((i-1)*8)}") for i in range(1,7)]
+    routers= [net.addHost('r0', cls=Node, ip=f"192.168.100.6")] + routers
+    for router in routers:
+        router.cmd('sysctl -w net.ipv4.ip_forward=1')
 
-    info('*** Adding router\n')
-    r1 = net.addHost('r1', ip='192.168.100.1/29')
-    r2 = net.addHost('r2', ip='192.168.100.9/29')
-    r3 = net.addHost('r3', ip='192.168.100.17/29')
+    info("*** Add hosts\n")
+    hosts = [net.addHost(f"h{i}", cls=Host, ip=f"10.0.{i}.254/24") for i in range(1, 7)]
 
-    info('*** Creating links\n')
-    net.addLink(h1, r1)
-    net.addLink(h2, r2)
-    net.addLink(r1, r3)
-    net.addLink(r2, r3)
+    info("*** Add links\n")
+    for i in range(6):
+        net.addLink(routers[0], switches[i], intfName1=f"r0-eth{i+1}", params1={"ip": f"192.168.100.{i*8+6}/29"})
+        net.addLink(routers[i+1], switches[i], intfName1=f"r1-eth{i+1}", params1={"ip": f"192.168.100.{i*8+1}/29"})
+        net.addLink(routers[i+1], switches[i+6], intfName1=f"r2-eth{i+1}", params1={"ip": f"10.0.{i+1}.1/24"})
+        net.addLink(hosts[i], switches[i+6], intfName1=f"h{i+1}-eth0", params1={"ip": f"10.0.{i+1}.254/24"})
 
-    info('*** Starting network\n')
-    net.start()
+    info("*** Starting network\n")
+    net.build()
 
-    info('*** Configuring hosts\n')
-    r1.cmd('ifconfig r1-eth1 10.0.1.1/24')
-    r2.cmd('ifconfig r2-eth1 10.0.2.1/24')
+    for controller in net.controllers:
+        controller.start()
 
-    info('*** Running CLI\n')
+    info("* Starting switches\n")
+    for switch in switches:
+        switch.start([])
+
+    info("*** Post configure switches and h≠osts\n")
+
+    # Setting up routing tables
+    info("*** Creating routes\n")
+    for i in range(6):
+        routers[0].cmd(f"ip route add 10.0.{i+1}.0/24 via 192.168.100.{i*8+1} dev r0-eth{i+1}")
+        routers[i+1].cmd(f"ip route add 10.0.0.0/21 via 192.168.100.{6+i*8} dev r1-eth{i+1}")
+        routers[i+1].cmd(f"ip route add 192.168.100.0/26 via 192.168.100.{6+i*8} dev r1-eth{i+1}")
+        hosts[i].cmd(f"ip route add 10.0.0.0/21 via 10.0.{i+1}.1 dev h{i+1}-eth0")
+        hosts[i].cmd(f"ip route add 192.168.100.0/26 via 10.0.{i+1}.1 dev h{i+1}-eth0")
+
     CLI(net)
-
-    info('*** Stopping network')
     net.stop()
 
 
-if __name__ == '__main__':
-    setLogLevel('info')
-    myNetwork()
+if __name__ == "__main__":
+    setLogLevel("info")
+    my_network()
