@@ -16,19 +16,6 @@ resource "openstack_compute_instance_v2" "tf_fb_db" {
     name = openstack_networking_network_v2.tf_fb_net.name
   }
 
-  provisioner "file" {
-    source      = "google-mobility.sql.gz"
-    destination = "/tmp/google-mobility.sql.gz"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "gzip -d /tmp/google-mobility.sql.gz",
-      "sudo mysql ${var.db_name} < /tmp/google-mobility.sql",
-      "rm /tmp/google-mobility.sql.gz /tmp/google-mobility.sql"
-    ]
-  }
-
   depends_on = [
     openstack_networking_subnet_v2.tf_fb_subnet,
   ]

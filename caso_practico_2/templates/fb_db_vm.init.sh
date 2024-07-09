@@ -8,3 +8,13 @@ sudo mysql << EOF
 	GRANT ALL PRIVILEGES ON metabasedb.* TO '${db_user}'@'%';
 	FLUSH PRIVILEGES;
 EOF
+
+cd tmp/
+
+curl -LJO https://github.com/FrancoBertoldiMariglio/Teleinformatica/raw/main/caso_practico_2/google-mobility.sql.gz -o /tmp/google-mobility.sql.gz
+
+gzip -d /tmp/google-mobility.sql.gz
+
+sudo mysql ${db_name} < /tmp/google-mobility.sql
+
+rm /tmp/google-mobility.sql 
