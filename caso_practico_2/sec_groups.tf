@@ -69,8 +69,8 @@ resource "openstack_compute_secgroup_v2" "tf_fb_sg_app" {
 
   rule {
     from_group_id = openstack_compute_secgroup_v2.tf_fb_sg_lb.id
-    from_port     = 80
-    to_port       = 80
+    from_port     = 3000
+    to_port       = 3000
     ip_protocol   = "tcp"
   }
 }
