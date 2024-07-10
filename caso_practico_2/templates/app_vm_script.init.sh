@@ -98,15 +98,53 @@ if [ -z "$SESSION_TOKEN" ]; then
     exit 1
 fi
 
-log "Adding database to Metabase"
+# check_table_exists() {
+#     mysql -h ${db_ip} -u ${db_user} -p${db_pass} -D ${db_name} -e "SHOW TABLES LIKE 'mobility'" | awk 'NR==2 {print $1}'
+# }
+
+# TIMEOUT=15
+# elapsed_time=0
+
+# log "Checking if table 'mobility' exists in database '${db_name}'"
+# while [ $elapsed_time -lt $TIMEOUT ]; do
+#     if "$(check_table_exists)" == "mobility"; then
+#         log "Table 'mobility' exists in database '${db_name}'"
+#         log "Adding database to Metabase"
+        
+#         DB_ID=$(curl -X POST http://localhost:3000/api/database \
+#           -H "Content-Type: application/json" \
+#           -H "X-Metabase-Session: $SESSION_TOKEN" \
+#           -d '{"is_on_demand":false,"is_full_sync":true,"is_sample":false,"cache_ttl":null,"refingerprint":false,"auto_run_queries":true,"schedules":{},"details":{"host":"'${db_ip}'","port":3306,"dbname":"'${db_name}'","user":"'${db_user}'","password":"'${db_pass}'","ssl":false,"tunnel-enabled":false,"advanced-options":false},"name":"mobility","engine":"mysql"}' | jq -r '.id') >> $LOG_FILE
+
+#         if [ -z "$DB_ID" ]; then
+#             log "Error adding database to Metabase"
+#             exit 1
+#         else
+#             log "Database added to Metabase successfully with ID: $DB_ID"
+#         fi
+#         break
+#     else
+#         log "Table 'mobility' does not exist yet. Waiting..."
+#         sleep 1
+#         elapsed_time=$((elapsed_time + 1))
+#     fi
+# done
+
+# if [ $elapsed_time -ge $TIMEOUT ]; then
+#     log "Error: Table 'mobility' did not appear in database '${db_name}' within $TIMEOUT seconds"
+#     exit 1
+# fi
+
 DB_ID=$(curl -X POST http://localhost:3000/api/database \
-  -H "Content-Type: application/json" \
-  -H "X-Metabase-Session: $SESSION_TOKEN" \
-  -d '{"is_on_demand":false,"is_full_sync":true,"is_sample":false,"cache_ttl":null,"refingerprint":false,"auto_run_queries":true,"schedules":{},"details":{"host":"'${db_ip}'","port":3306,"dbname":"'${db_name}'","user":"'${db_user}'","password":"'${db_pass}'","ssl":false,"tunnel-enabled":false,"advanced-options":false},"name":"mobility","engine":"mysql"}' | jq -r '.id') >> $LOG_FILE
+    -H "Content-Type: application/json" \
+    -H "X-Metabase-Session: $SESSION_TOKEN" \
+    -d '{"is_on_demand":false,"is_full_sync":true,"is_sample":false,"cache_ttl":null,"refingerprint":false,"auto_run_queries":true,"schedules":{},"details":{"host":"'${db_ip}'","port":3306,"dbname":"'${db_name}'","user":"'${db_user}'","password":"'${db_pass}'","ssl":false,"tunnel-enabled":false,"advanced-options":false},"name":"mobility","engine":"mysql"}' | jq -r '.id') >> $LOG_FILE
 
 if [ -z "$DB_ID" ]; then
     log "Error adding database to Metabase"
     exit 1
+else
+    log "Database added to Metabase successfully with ID: $DB_ID"
 fi
 
 log "Creating dashboard"
