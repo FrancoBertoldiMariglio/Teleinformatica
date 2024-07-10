@@ -19,9 +19,8 @@ export MB_DB_USER=${db_user}
 export MB_DB_PASS=${db_pass}
 export MB_DB_HOST=${db_ip}
 
-#env > /home/ubuntu/metabase/env_vars.log
 
-#sudo java -jar metabase.jar
+
 
 sudo java -DMB_DB_TYPE=mysql \
      -DMB_DB_DBNAME=${db_name} \
