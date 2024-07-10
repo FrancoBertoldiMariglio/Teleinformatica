@@ -1,6 +1,6 @@
-resource "openstack_compute_secgroup_v2" "tf_fb_sg_base" {
-  name        = "tf_fb_sg_base"
-  description = "tf_fb_sg_base"
+resource "openstack_compute_secgroup_v2" "sg_base" {
+  name        = "sg_base"
+  description = "Security Group base para todas las VMs"
 
   rule {
     from_port   = -1
@@ -11,9 +11,9 @@ resource "openstack_compute_secgroup_v2" "tf_fb_sg_base" {
 }
 
 
-resource "openstack_compute_secgroup_v2" "tf_fb_sg_bastion" {
-  name        = "tf_fb_sg_bastion"
-  description = "tf_fb_sg_bastion"
+resource "openstack_compute_secgroup_v2" "sg_bastion" {
+  name        = "sg_bastion"
+  description = "Security Group para VM bastion"
 
   rule {
     from_port   = 22
@@ -30,12 +30,12 @@ resource "openstack_compute_secgroup_v2" "tf_fb_sg_bastion" {
   }
 }
 
-resource "openstack_compute_secgroup_v2" "tf_fb_sg_lb" {
-  name        = "tf_fb_sg_lb"
-  description = "tf_fb_sg_lb"
+resource "openstack_compute_secgroup_v2" "sg_lb" {
+  name        = "sg_lb"
+  description = "Security Group para VM load balancer"
 
   rule {
-    from_group_id = openstack_compute_secgroup_v2.tf_fb_sg_bastion.id
+    from_group_id = openstack_compute_secgroup_v2.sg_bastion.id
     from_port     = 22
     to_port       = 22
     ip_protocol   = "tcp"
@@ -56,31 +56,31 @@ resource "openstack_compute_secgroup_v2" "tf_fb_sg_lb" {
   }
 }
 
-resource "openstack_compute_secgroup_v2" "tf_fb_sg_app" {
-  name        = "tf_fb_sg_app"
-  description = "tf_fb_sg_app"
+resource "openstack_compute_secgroup_v2" "sg_app" {
+  name        = "sg_app"
+  description = "sg_app"
 
   rule {
-    from_group_id = openstack_compute_secgroup_v2.tf_fb_sg_bastion.id
+    from_group_id = openstack_compute_secgroup_v2.sg_bastion.id
     from_port     = 22
     to_port       = 22
     ip_protocol   = "tcp"
   }
 
   rule {
-    from_group_id = openstack_compute_secgroup_v2.tf_fb_sg_lb.id
+    from_group_id = openstack_compute_secgroup_v2.sg_lb.id
     from_port     = 3000
     to_port       = 3000
     ip_protocol   = "tcp"
   }
 }
 
-resource "openstack_compute_secgroup_v2" "tf_fb_sg_db" {
-  name        = "tf_fb_sg_db"
-  description = "tf_fb_sg_db"
+resource "openstack_compute_secgroup_v2" "sg_db" {
+  name        = "sg_db"
+  description = "Security Group para VM db"
 
   rule {
-    from_group_id = openstack_compute_secgroup_v2.tf_fb_sg_bastion.id
+    from_group_id = openstack_compute_secgroup_v2.sg_bastion.id
     from_port     = 22
     to_port       = 22
     ip_protocol   = "tcp"
