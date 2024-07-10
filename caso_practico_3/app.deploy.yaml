@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: app_metabase
+  name: app_metabase
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app_metabase
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: app_metabase
+    spec:
+      containers:
+      - image: metabase/metabase
+        name: metabase
+        resources: {}
+status: {}
