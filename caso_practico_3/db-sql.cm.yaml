@@ -1,4 +1,7 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-sql
 data:
   schema.sql: |
     USE whois;
@@ -13,7 +16,4 @@ data:
 
     LOCK TABLES `whois` WRITE;
     /*!40000 ALTER TABLE `whois` DISABLE KEYS */;
-kind: ConfigMap
-metadata:
-  creationTimestamp: null
-  name: db-sql
+

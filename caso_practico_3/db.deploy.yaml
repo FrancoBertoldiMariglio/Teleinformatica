@@ -11,19 +11,15 @@ spec:
       app: db
   template:
     metadata:
-      generateName: db
+      name: db
       labels:
         app: db
         version: v0.1
     spec:
-      restartPolicy: Always
       containers:
         - name: db
-          image: mysql
+          image: mysql:latest
           imagePullPolicy: Always
-          volumeMounts:
-          - name: sql-volume
-            mountPath: "/docker-entrypoint-initdb.d/"
           env:
             - name: MYSQL_DATABASE
               valueFrom:
@@ -38,10 +34,14 @@ spec:
           ports:
             - name: db-mysql
               containerPort: 3306
+          volumeMounts:
+            - name: sql-volume
+              mountPath: "/docker-entrypoint-initdb.d/"
       volumes:
-      - configMap:
-          name: db-sql
-        name: sql-volume
-      - name: secret-volume
-        secret:
-          secretName: db-credentials
+        - name: sql-volume
+          configMap:
+            name: db-sql
+        - name: secret-volume
+          secret:
+            secretName: db-credentials
+
