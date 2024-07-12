@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: db-sql
+  name: init-db-script
 data:
-  schema.sql: |
-    USE whois;
-    DROP TABLE IF EXISTS `whois`;
-    CREATE TABLE `whois` (
-      `id` int(11) NOT NULL AUTO_INCREMENT,
-      `asn` varchar(45) DEFAULT NULL,
-      `cidr` varchar(45) DEFAULT NULL,
-      `whois` json DEFAULT NULL,
-      PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=563 DEFAULT CHARSET=utf8;
+  init-db.sh: |
+    #!/bin/bash
 
-    LOCK TABLES `whois` WRITE;
-    /*!40000 ALTER TABLE `whois` DISABLE KEYS */;
+    sudo apt-get update
+
+    sudo sed -i '/bind-address/s/127.0.0.1/0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
+
+    sudo mysql << EOF
+        CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
+        CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};
+        GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
+        FLUSH PRIVILEGES;
+    EOF
 
