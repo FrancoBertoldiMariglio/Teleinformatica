@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metabase-config
+data:
+  DB_HOST: db
+  DB_TYPE: mysql
+  DB_NAME: metabase
+  DB_PORT: "3306"

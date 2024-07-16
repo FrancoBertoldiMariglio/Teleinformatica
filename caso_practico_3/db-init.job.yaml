@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-metabase-db
+spec:
+  template:
+    spec:
+      containers:
+      - name: init-db
+        image: mysql:latest
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_PASSWORD
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+          apk add --no-cache curl
+          mysql -h db -u root -p$MYSQL_ROOT_PASSWORD <<EOF
+          CREATE DATABASE IF NOT EXISTS metabasedb;
+          CREATE USER IF NOT EXISTS '$(echo $DB_USERNAME | base64 -d)'@'%' IDENTIFIED BY '$(echo $DB_PASSWORD | base64 -d)';
+          GRANT ALL PRIVILEGES ON metabasedb.* TO '$(echo $DB_USERNAME | base64 -d)'@'%';
+          FLUSH PRIVILEGES;
+          EOF
+          curl -L https://github.com/path/to/your/sql/file.sql.gz -o /tmp/dump.sql.gz
+          gunzip /tmp/dump.sql.gz
+          mysql -h db -u root -p$MYSQL_ROOT_PASSWORD metabasedb < /tmp/dump.sql
+          echo "Database initialization completed."
+      restartPolicy: Never
+  backoffLimit: 4
