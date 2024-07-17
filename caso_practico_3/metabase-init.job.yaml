@@ -183,24 +183,30 @@ spec:
           else
             echo "Question created successfully with ID: $QUESTION_ID"
           fi
-
-          CARD_RESPONSE=$(curl -X POST http://metabase-service:3000/api/dashboard/$DASHBOARD_ID/cards \
+          DASHBOARD_UPDATE_RESPONSE=$(curl -s -X PUT "http://metabase-service:3000/api/dashboard/$DASHBOARD_ID" \
             -H "Content-Type: application/json" \
             -H "X-Metabase-Session: $SESSION_TOKEN" \
             -d '{
-              "cardId": '$QUESTION_ID',
-              "sizeX": 24,
-              "sizeY": 15,
-              "row": 0,
-              "col": 0
+              "name": "Mobility Dashboard",
+              "description": "Mobility data for Mendoza Province, Capital Department",
+              "parameters": [],
+              "cards": [
+                {
+                  "card_id": '$QUESTION_ID',
+                  "size_x": 24,
+                  "size_y": 15,
+                  "row": 0,
+                  "col": 0,
+                  "parameter_mappings": [],
+                  "series": []
+                }
+               ]
             }')
 
-          if [ -z "$CARD_RESPONSE" ]; then
-            echo "Failed to add card to dashboard"
+          if [ -z "$DASHBOARD_UPDATE_RESPONSE" ]; then
+            echo "Failed to update dashboard"
             exit 1
           else
-            echo "Card added to dashboard successfully"
+            echo "Dashboard updated successfully"
           fi
-
-          echo "Metabase setup completed successfully"
       restartPolicy: OnFailure
