@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: init-metabase-db
+  name: db-setup
 spec:
   template:
     spec:
@@ -13,21 +13,36 @@ spec:
           valueFrom:
             secretKeyRef:
               name: db-credentials
+              key: DB_ROOT_PASSWORD
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
               key: DB_PASSWORD
         command: ["/bin/sh", "-c"]
         args:
         - |
           set -e
-          apk add --no-cache curl
-          mysql -h db -u root -p$MYSQL_ROOT_PASSWORD <<EOF
+          echo $MYSQL_ROOT_PASSWORD
+          until mysql -h db-service -u root -p$MYSQL_ROOT_PASSWORD -e "SELECT 1"; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 2
+          done
+          mysql -h db-service -u root -p$MYSQL_ROOT_PASSWORD <<EOF
           CREATE DATABASE IF NOT EXISTS metabasedb;
-          CREATE USER IF NOT EXISTS '$(echo $DB_USERNAME | base64 -d)'@'%' IDENTIFIED BY '$(echo $DB_PASSWORD | base64 -d)';
-          GRANT ALL PRIVILEGES ON metabasedb.* TO '$(echo $DB_USERNAME | base64 -d)'@'%';
+          CREATE USER IF NOT EXISTS '$DB_USERNAME'@'%' IDENTIFIED BY '$DB_PASSWORD';
+          GRANT ALL PRIVILEGES ON metabasedb.* TO '$DB_USERNAME'@'%';
           FLUSH PRIVILEGES;
           EOF
-          curl -L https://github.com/path/to/your/sql/file.sql.gz -o /tmp/dump.sql.gz
+          curl -L https://github.com/FrancoBertoldiMariglio/Teleinformatica/raw/065a6a30ac4dc372883018abbb9f003264286b0c/caso_practico_3/google-mobility.sql.gz -o /tmp/dump.sql.gz
           gunzip /tmp/dump.sql.gz
-          mysql -h db -u root -p$MYSQL_ROOT_PASSWORD metabasedb < /tmp/dump.sql
+          mysql -h db-service -u root -p$MYSQL_ROOT_PASSWORD metabasedb < /tmp/dump.sql
+          rm /tmp/dump.sql
           echo "Database initialization completed."
       restartPolicy: Never
   backoffLimit: 4

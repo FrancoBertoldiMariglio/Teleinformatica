@@ -1,0 +1,206 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: metabase-setup
+spec:
+  template:
+    metadata:
+      name: metabase-setup
+    spec:
+      containers:
+      - name: metabase-setup
+        image: ubuntu:latest
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: metabase-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: metabase-config
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: metabase-config
+              key: DB_NAME
+        - name: DB_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: metabase-config
+              key: DB_TYPE
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_PASSWORD
+        - name: MB_MAIL
+          valueFrom:
+            secretKeyRef:
+              name: metabase-credentials
+              key: MB_MAIL
+        - name: MB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: metabase-credentials
+              key: MB_PASSWORD
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+          apt-get update && apt-get install -y curl jq
+          
+          wait_for_metabase() {
+            echo "Waiting for Metabase to be ready"
+            while ! curl -s http://metabase-service:3000/api/health | grep -q "ok"; do
+              sleep 10
+            done
+          }
+
+          wait_for_metabase
+          
+          echo "Metabase ready"
+
+          SETUP_TOKEN=$(curl -s -m 5 -X GET \
+            -H "Content-Type: application/json" \
+            http://metabase-service:3000/api/session/properties \
+            | jq -r '.["setup-token"]')
+          
+          echo "Setup token obtained: $SETUP_TOKEN"
+
+          SETUP_RESPONSE=$(curl -s -X POST http://metabase-service:3000/api/setup \
+            -H "Content-Type: application/json" \
+            -d '{
+              "token":"'$SETUP_TOKEN'",
+              "user":{
+                "first_name":"Franco",
+                "last_name":"Bertoldi",
+                "email":"'$MB_MAIL'",
+                "password":"'$MB_PASSWORD'",
+                "site_name":"Universidad de Mendoza"
+              },
+              "prefs":{
+                "site_name":"Universidad de Mendoza",
+                "site_locale":"en"
+              }
+            }')
+          
+          echo "Setup response: $SETUP_RESPONSE"
+
+          SESSION_TOKEN=$(curl -X POST http://metabase-service:3000/api/session \
+            -H "Content-Type: application/json" \
+            -d '{
+              "username": "'$MB_MAIL'",
+              "password": "'$MB_PASSWORD'"
+            }' | jq -r '.id')
+
+          if [ -z "$SESSION_TOKEN" ]; then
+            echo "Error creating session token"
+            exit 1
+          else
+            echo "Session token created successfully"
+          fi
+
+          DB_ID=$(curl -X POST http://metabase-service:3000/api/database \
+            -H "Content-Type: application/json" \
+            -H "X-Metabase-Session: $SESSION_TOKEN" \
+            -d '{
+              "engine": "mysql",
+              "name": "mobility",
+              "details": {
+                "host": "'$DB_HOST'",
+                "port": '$DB_PORT',
+                "dbname": "'$DB_NAME'",
+                "user": "'$DB_USERNAME'",
+                "password": "'$DB_PASSWORD'",
+                "ssl": false
+              },
+              "is_on_demand": false,
+              "is_full_sync": true
+            }' | jq -r '.id')
+
+          if [ -z "$DB_ID" ]; then
+            echo "Error adding database to Metabase"
+            exit 1
+          else
+            echo "Database added successfully with ID: $DB_ID"
+          fi
+
+          DASHBOARD_ID=$(curl -X POST http://metabase-service:3000/api/dashboard \
+            -H "Content-Type: application/json" \
+            -H "X-Metabase-Session: $SESSION_TOKEN" \
+            -d '{
+              "name": "Mobility Dashboard",
+              "description": "Mobility data for Mendoza Province, Capital Department"
+            }' | jq -r '.id')
+
+          if [ -z "$DASHBOARD_ID" ]; then
+            echo "Failed to create dashboard"
+            exit 1
+          else
+            echo "Dashboard created successfully with ID: $DASHBOARD_ID"
+          fi
+
+          QUESTION_ID=$(curl -X POST http://metabase-service:3000/api/card \
+            -H "Content-Type: application/json" \
+            -H "X-Metabase-Session: $SESSION_TOKEN" \
+            -d '{
+              "name":"average mendoza",
+              "dataset_query":{
+                "database":'$DB_ID',
+                "type":"query",
+                "query":{
+                  "source-table":9,
+                  "aggregation":[
+                    ["avg",["field",83,{"base-type":"type/Integer"}]],
+                    ["avg",["field",81,{"base-type":"type/Integer"}]],
+                    ["avg",["field",72,{"base-type":"type/Integer"}]],
+                    ["avg",["field",80,{"base-type":"type/Integer"}]],
+                    ["avg",["field",78,{"base-type":"type/Integer"}]],
+                    ["avg",["field",86,{"base-type":"type/Integer"}]]
+                  ],
+                  "breakout":[["field",73,{"base-type":"type/DateTime","temporal-unit":"day"}]],
+                  "filter":["and",["=",["field",85,{"base-type":"type/Text"}],"Mendoza Province"],["=",["field",75,{"base-type":"type/Text"}],"Capital Department"],["between",["field",73,{"base-type":"type/DateTime"}],"2020-01-01","2020-12-31"]]
+                }
+              },
+              "display":"area",
+              "visualization_settings":{
+                "graph.dimensions":["date"],
+                "graph.metrics":["avg","avg_2","avg_3","avg_4","avg_5","avg_6"]
+              }
+            }' | jq -r '.id')
+
+          if [ -z "$QUESTION_ID" ]; then
+            echo "Failed to create question"
+            exit 1
+          else
+            echo "Question created successfully with ID: $QUESTION_ID"
+          fi
+
+          CARD_RESPONSE=$(curl -X POST http://metabase-service:3000/api/dashboard/$DASHBOARD_ID/cards \
+            -H "Content-Type: application/json" \
+            -H "X-Metabase-Session: $SESSION_TOKEN" \
+            -d '{
+              "cardId": '$QUESTION_ID',
+              "sizeX": 24,
+              "sizeY": 15,
+              "row": 0,
+              "col": 0
+            }')
+
+          if [ -z "$CARD_RESPONSE" ]; then
+            echo "Failed to add card to dashboard"
+            exit 1
+          else
+            echo "Card added to dashboard successfully"
+          fi
+
+          echo "Metabase setup completed successfully"
+      restartPolicy: OnFailure

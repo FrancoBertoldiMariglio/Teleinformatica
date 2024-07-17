@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: metabase-config
 data:
-  DB_HOST: db
+  DB_HOST: db-service
   DB_TYPE: mysql
-  DB_NAME: metabase
+  DB_NAME: metabasedb
   DB_PORT: "3306"

@@ -12,9 +12,8 @@ spec:
   - Egress
   ingress:
   - from:
-    - podSelector:
-        matchLabels:
-          app: app-metabase
+    - ipBlock:
+        cidr: 0.0.0.0/0
     ports:
     - protocol: TCP
       port: 3306
@@ -24,6 +23,9 @@ spec:
         cidr: 0.0.0.0/0
     - ipBlock:
         cidr: ::/0
+    ports:
+    - protocol: TCP
+      port: 3306
 
 ---
 
@@ -34,7 +36,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: app-metabase 
+      app: metabase 
   policyTypes:
   - Ingress
   - Egress

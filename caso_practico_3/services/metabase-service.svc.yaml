@@ -5,7 +5,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: metabase-app
+    app: metabase
   ports:
     - protocol: TCP
       port: 3000
