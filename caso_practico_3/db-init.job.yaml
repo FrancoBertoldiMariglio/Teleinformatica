@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-setup
+spec:
+  template:
+    spec:
+      containers:
+      - name: init-db
+        image: mysql:latest
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_ROOT_PASSWORD
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: DB_PASSWORD
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+          echo $MYSQL_ROOT_PASSWORD
+          until mysql -h db-service -u root -p$MYSQL_ROOT_PASSWORD -e "SELECT 1"; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 2
+          done
+          mysql -h db-service -u root -p$MYSQL_ROOT_PASSWORD <<EOF
+          CREATE DATABASE IF NOT EXISTS metabasedb;
+          CREATE USER IF NOT EXISTS '$DB_USERNAME'@'%' IDENTIFIED BY '$DB_PASSWORD';
+          GRANT ALL PRIVILEGES ON metabasedb.* TO '$DB_USERNAME'@'%';
+          FLUSH PRIVILEGES;
+          EOF
+          curl -L https://github.com/FrancoBertoldiMariglio/Teleinformatica/raw/065a6a30ac4dc372883018abbb9f003264286b0c/caso_practico_3/google-mobility.sql.gz -o /tmp/dump.sql.gz
+          gunzip /tmp/dump.sql.gz
+          mysql -h db-service -u root -p$MYSQL_ROOT_PASSWORD metabasedb < /tmp/dump.sql
+          rm /tmp/dump.sql
+          echo "Database initialization completed."
+      restartPolicy: Never
+  backoffLimit: 4
