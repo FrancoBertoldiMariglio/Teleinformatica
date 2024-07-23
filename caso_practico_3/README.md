@@ -16,4 +16,4 @@ Luego, tenemos que hacer cd a cada una de los directorios mencioandos y hacer **
 directorio principal (caso_practico_3) y hacer **kubectl**.
 
 Para poder acceder al servicio, debemos listar alguna de las IPs de los nodos del cluster (con kubectl get node) y escribir en el buscador:
-**<ip-nodo/metabase**.
+**ip-nodo/metabase**.
